@@ -1,0 +1,118 @@
+* {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: black;
+}
+
+#MainWindow {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: absolute;
+}
+
+#Menu {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    background-color: transparent;
+    width: 70%;
+    height: 70%;
+    border: 6px solid gray;
+    border-radius: 30px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+}
+
+#Inner-Menu {
+    display: flex;
+    width: 98%;
+    height: 98%;
+    justify-content: center;
+    align-items: center;
+    border: 4px solid gray;
+    border-radius: 30px;
+}
+
+#Start-Button {
+    font-size: 100px;
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+    vertical-align: middle;
+    user-select: none;
+    color: white;
+    letter-spacing: 25px;
+    padding: 20px 40px 20px 40px;
+    border-radius: 50px;
+    text-align: center;
+}
+
+#Start-Button:hover {
+    color: black;
+    background-color: white;
+}
+
+#End-Menu {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    border: 4px solid gray;
+    border-radius: 30px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    flex-direction: column;
+    gap: 50px;
+    z-index: 2;
+    background-color: transparent;
+}
+
+#End-Menu-Label {
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    user-select: none;
+    letter-spacing: 5px;
+    font-size: 48px;
+    background-color: transparent;
+}
+
+#Level-Label {
+    color: aqua;
+    font-family: Arial, Helvetica, sans-serif;
+    user-select: none;
+    letter-spacing: 2px;
+    font-size: 42px;
+    background-color: transparent;
+}
+
+#Play-Again-Button {
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 64px;
+    letter-spacing: 10px;
+    user-select: none;
+    padding: 10px 20px 10px 20px;
+    border-radius: 50px;
+    background-color: transparent;
+}
+
+#Play-Again-Button:hover {
+    color: black;
+    background-color: white;
+}
+
+#Overlay {
+    display: none;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    opacity: 65%;
+    z-index: 1;
+}
