@@ -1,11 +1,18 @@
 
 const StartMenu = document.getElementById("Menu");
 const StartMenuButton = document.getElementById("Start-Button");
+const StartMenuSettingsButton = document.getElementById("Settings-Button");
 const EndMenu = document.getElementById("End-Menu");
 const PlayAgainButton = document.getElementById("Play-Again-Button");
 const LevelLabel = document.getElementById("Level-Label");
 const Overlay = document.getElementById("Overlay");
 const CANVAS_ELEMENT = document.getElementById("MainWindow");
+const SettingsMenu = document.getElementById('Settings-Menu');
+const InputsContainer = document.getElementById("Inputs-Container");
+const GoBackButton = document.getElementById('Go-Back-Button');
+const PauseMenu = document.getElementById('Pause-Menu');
+const UnpauseButton = document.getElementById('Unpause-Button');
+const PauseMenuSettingsButton = document.getElementById('Pause-Menu-Settings-Button');
 const ctx = CANVAS_ELEMENT.getContext("2d");
 const MAX_TRIANGLES = 5;
 const STARTING_TRIANGLES_COUNT = 3;
@@ -24,6 +31,15 @@ const TRIANGLE_HEIGHT = 85;
 const TRIANGLE_ROTATION_SPEED = 30;
 const TRIANGLE_SEARCHING_COLOR = '#10F005';
 const TRIANGLE_LOCKED_IN_COLOR = '#CF1111';
+let JoyStick = null;
+// 0 Keyboard, 1 JoyStick
+let InputDevice = 0;
+let PreviousSettingsMenu = 0;
+let IsPauseMenuActive = false;
+let IsSettingsMenuActive = false;
+let ToggleCount = 0;
+let PrevStartButton = 0;
+let PrevGameState = true;
 
 
 function ResizeCanvas(event) {
@@ -33,7 +49,55 @@ function ResizeCanvas(event) {
 
 window.addEventListener('resize', ResizeCanvas, false);
 StartMenuButton.addEventListener('click', StartGame);
+StartMenuSettingsButton.addEventListener('click', (event) => {
+    SettingsMenu.style.display = 'flex';
+    StartMenu.style.display = 'none';
+    IsSettingsMenuActive = true;
+});
 PlayAgainButton.addEventListener('click', StartGame);
+
+GoBackButton.addEventListener('click', (event) => {
+    SettingsMenu.style.display = 'none';
+    IsSettingsMenuActive = false;
+
+    if(PreviousSettingsMenu == 0) {
+        StartMenu.style.display = 'flex';
+    }
+    else if(PreviousSettingsMenu == 1) {
+        PauseMenu.style.display = 'flex';
+    }
+});
+
+UnpauseButton.addEventListener('click', (event) => {
+    PauseMenu.style.display = 'none';
+    Overlay.style.display = 'none';
+    IsPauseMenuActive = false;
+    PreviousSettingsMenu = 1;
+});
+
+PauseMenuSettingsButton.addEventListener('click', (event) => {
+    PreviousSettingsMenu = 1;
+    IsSettingsMenuActive = true;
+    SettingsMenu.style.display = 'flex';
+    PauseMenu.style.display = 'none';
+});
+
+function TogglePauseMenu() {
+
+    if(GAME_IS_RUNNING && !IsSettingsMenuActive && PreviousSettingsMenu != 2) {
+        IsPauseMenuActive = !IsPauseMenuActive;
+        PreviousSettingsMenu = 1;
+
+        if(IsPauseMenuActive) {
+            PauseMenu.style.display = 'flex';
+            Overlay.style.display = 'block';
+        }
+        else {
+            PauseMenu.style.display = 'none';
+            Overlay.style.display = 'none';
+        }
+    }
+}
 
 function ClearBackground(BackgroundColor = 'black') {
     ctx.fillStyle = BackgroundColor;
@@ -48,6 +112,71 @@ function CalculateDistance(PointA, PointB) {
     return Math.sqrt(Math.pow(PointB.x - PointA.x, 2) + Math.pow(PointB.y - PointA.y, 2));
 }
 
+function UpdateInputsHighlight() {
+    
+    if(InputDevice == 0) {
+        InputsContainer.children[0].classList.add('Selected-Item');
+    }
+    else {
+        InputsContainer.children[0].classList.remove('Selected-Item');
+    }
+
+    for(let i = 1; i < InputsContainer.children.length; ++i) {
+        if(InputDevice == i) {
+            InputsContainer.children[i].classList.add('Selected-Item');
+        }
+        else {
+            InputsContainer.children[i].classList.remove('Selected-Item');
+        }
+    }
+}
+
+function UpdateInputsContainer() {
+    
+    while(InputsContainer.firstChild) {
+        InputsContainer.removeChild(InputsContainer.lastChild);
+    }
+
+    const Controlers = navigator.getGamepads();
+    const KeyboardDOMElement = document.createElement('div');
+    KeyboardDOMElement.innerHTML = 'Keyboard';
+    KeyboardDOMElement.classList.add('Input-Item');
+    KeyboardDOMElement.onclick = () => {
+        InputDevice = 0;
+        UpdateInputsHighlight();
+    }
+
+    if(InputDevice == 0) {
+        KeyboardDOMElement.classList.add("Selected-Item");
+    }
+
+    InputsContainer.append(KeyboardDOMElement);
+
+    for(let i = 0; i < Controlers.length; ++i) {
+        if(Controlers[i] != null) {
+            const ControlerDOMElement = document.createElement('div');
+            ControlerDOMElement.innerHTML = Controlers[i].id;
+            ControlerDOMElement.classList.add('Input-Item');
+            if(InputDevice == Controlers[i].index + 1) {
+                ControlerDOMElement.classList.add('Selected-Item');
+            }
+            ControlerDOMElement.onclick = () => {
+                InputDevice = Controlers[i].index + 1;
+                UpdateInputsHighlight();
+            }
+            InputsContainer.append(ControlerDOMElement);
+        }
+    }
+}
+
+window.addEventListener('gamepadconnected', (event) => {
+    UpdateInputsContainer();
+});
+
+window.addEventListener('gamepaddisconnected', (event) => {
+    UpdateInputsContainer();
+});
+
 class InputHandler {
 
     constructor() {
@@ -57,41 +186,106 @@ class InputHandler {
         this.YKeyPress = 0;
     }
 
-    HandleKeyPressDown(event) {
-        switch(event.key) {
-            case 'ArrowLeft':
-                this.XKeyPress = -1;
-                break;
-            case 'ArrowRight':
+    HandleJoystickMovement() {
+
+        const controlers = navigator.getGamepads();
+        JoyStick = null;
+
+        for(let i = 0; i < controlers.length; ++i) {
+            if(controlers[i] != null && controlers[i].index+1 == InputDevice) {
+                JoyStick = controlers[i];
+            }
+        }
+
+        if(JoyStick != null) {
+
+            if(JoyStick.buttons[9].pressed && JoyStick.buttons[9].pressed != PrevStartButton) {
+                if(GAME_IS_RUNNING) {
+                    if(GAME_IS_RUNNING == PrevGameState) {
+                        TogglePauseMenu();
+                    }
+                    else {
+                        PrevGameState = GAME_IS_RUNNING;
+                    }
+                }
+                else return "YES";
+            }
+
+            PrevStartButton = JoyStick.buttons[9].pressed;
+
+            const x_val = Math.floor(JoyStick.axes[0] * 100);
+            const y_val = Math.floor(JoyStick.axes[1] * 100);
+
+            if(x_val >= 1) {
                 this.XKeyPress = 1;
-                break;
-            case 'ArrowDown':
+            }
+            else if(x_val <= -1) {
+                this.XKeyPress = -1;
+            }
+            else {
+                this.XKeyPress = 0;
+            }
+    
+            if(y_val >= 1) {
                 this.YKeyPress = 1;
-                break;
-            case 'ArrowUp':
+            }
+            else if(y_val <= -1) {
                 this.YKeyPress = -1;
-                break;
-            default:
-                break;
+            }
+            else {
+                this.YKeyPress = 0;
+            }
         }
     }
 
+    HandleKeyPressDown(event) {
+        if(InputDevice == 0) {
+            switch(event.key) {
+                case 'ArrowLeft':
+                    this.XKeyPress = -1;
+                    break;
+                case 'ArrowRight':
+                    this.XKeyPress = 1;
+                    break;
+                case 'ArrowDown':
+                    this.YKeyPress = 1;
+                    break;
+                case 'ArrowUp':
+                    this.YKeyPress = -1;
+                    break;
+                case 'Escape':
+                    ToggleCount = 0;
+                    TogglePauseMenu();
+                    break;
+                default:
+                    break;
+            }
+        }
+        
+    }
+
     HandleKeyPressUp(event) {
-        switch(event.key) {
-            case 'ArrowLeft':
-                this.XKeyPress = 0;
-                break;
-            case 'ArrowRight':
-                this.XKeyPress = 0;
-                break;
-            case 'ArrowDown':
-                this.YKeyPress = 0;
-                break;
-            case 'ArrowUp':
-                this.YKeyPress = 0;
-                break;
-            default:
-                break;
+        if(InputDevice == 0) {
+            switch(event.key) {
+                case 'ArrowLeft':
+                    this.XKeyPress = 0;
+                    break;
+                case 'ArrowRight':
+                    this.XKeyPress = 0;
+                    break;
+                case 'ArrowDown':
+                    this.YKeyPress = 0;
+                    break;
+                case 'ArrowUp':
+                    this.YKeyPress = 0;
+                    break;
+                case 'Escape':
+                    ++ToggleCount;
+                    if(ToggleCount >= 2) TogglePauseMenu();
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }
@@ -112,7 +306,7 @@ class Circle {
         this.y_acc_step = 150;
         this.dec_x_step = 225;
         this.dec_y_step = 225;
-        this.take_acc_from_other_axis_cof = 2;
+        this.take_acc_from_other_axis_cof = 3;
         this.x_acc = 0;
         this.y_acc = 0;
         this.InputHandler = new InputHandler();
@@ -485,39 +679,56 @@ function UpdateTriangles(delta, targetCircle) {
 }
 
 function Loop(TimeElapsed) {
-    if(LastTime == 0 && TimeElapsed != 0) {
+
+    if(!IsPauseMenuActive && GAME_IS_RUNNING) {
+        if(LastTime == 0 && TimeElapsed != 0) {
+            LastTime = TimeElapsed;
+        }
+        const DeltaTime = (TimeElapsed - LastTime) / 1000;
+        LastTime = TimeElapsed;
+
+        ClearBackground();
+
+        MainCharacter.render();
+        RenderTriangles(DeltaTime);
+
+        MainCharacter.update(DeltaTime);
+        UpdateTriangles(DeltaTime, MainCharacter);
+
+        if(TriangleCount == 0) {
+            Triangles = [LastTriangleAlive, ];
+            ++Level;
+            TriangleCount = ++Difficulty;
+            GenerateNewTriangles(TriangleCount);
+        }
+    }
+    else {
         LastTime = TimeElapsed;
     }
-    const DeltaTime = (TimeElapsed - LastTime) / 1000;
-    LastTime = TimeElapsed;
 
-    ClearBackground();
-
-    MainCharacter.render();
-    RenderTriangles(DeltaTime);
-
-    MainCharacter.update(DeltaTime);
-    UpdateTriangles(DeltaTime, MainCharacter);
-
-    if(TriangleCount == 0) {
-        Triangles = [LastTriangleAlive, ];
-        ++Level;
-        TriangleCount = ++Difficulty;
-        GenerateNewTriangles(TriangleCount);
+    if(InputDevice != 0) { 
+        let ShouldReset = MainCharacter.InputHandler.HandleJoystickMovement();
+        if(ShouldReset === 'YES') {
+            setTimeout(StartGame, 100);
+            PrevGameState = false;
+            return;
+        }
     }
     
     if(!GAME_IS_RUNNING) {
+        PreviousSettingsMenu = 2;
         EndMenu.style.display = 'flex';
         Overlay.style.display = 'block';
         LevelLabel.innerHTML = `Level: ${Level}`;
         LastTime = 0;
-        return;
+        IsPauseMenuActive = false;
     }
 
     requestAnimationFrame(Loop);
 }
 
 function StartGame() {
+    PreviousSettingsMenu = 1;
     StartMenu.style.display = 'none';
     EndMenu.style.display = 'none';
     Overlay.style.display = 'none';
@@ -527,8 +738,10 @@ function StartGame() {
     Triangles = [];
     Level = 1;
     Difficulty = 3;
+    LastTime = 0;
 
     ResizeCanvas();
     InitializeObjects();
     Loop(0);
 }
+
